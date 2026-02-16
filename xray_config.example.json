@@ -1,0 +1,16 @@
+{
+    "inbounds": [{
+        "port": 38472,
+        "listen": "0.0.0.0",
+        "protocol": "vless",
+        "settings": {
+            "clients": [{"id": "你的-UUID-由-deploy.sh-生成或自行填写"}],
+            "decryption": "none"
+        },
+        "streamSettings": {
+            "network": "ws",
+            "wsSettings": {"path": "/9k2m"}
+        }
+    }],
+    "outbounds": [{"protocol": "freedom"}]
+}
