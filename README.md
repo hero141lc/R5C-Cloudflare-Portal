@@ -53,7 +53,9 @@ chmod +x deploy.sh
 |----|-----|
 | Subdomain | 留空或填 `@`（表示根域名） |
 | Domain | 选择你的域名（如 `yourdomain.com`） |
-| Service | `HTTP://nginx:80` |
+| Service | `HTTP://127.0.0.1:19880` |
+
+Tunnel 使用 **host 网络**（使用宿主机 DNS/网络，避免容器内 DNS 无法解析 Cloudflare），Nginx 映射到宿主机 `127.0.0.1:19880`，故此处填 `127.0.0.1:19880`。
 
 **TLS：** 在 **Additional application settings → TLS** 中，内网为 HTTP 时可开启 **No TLS Verify**（按需）。
 
@@ -69,7 +71,7 @@ chmod +x deploy.sh
 - **`/`** → 转发到 **dashdot:3001**（状态页）。
 - **`/9k2m`** → 转发到 **xray:38472**（VLESS WebSocket），并带上 WebSocket 升级头。
 
-因此 Cloudflare 只需配置**一条** Public Hostname：域名 → `HTTP://nginx:80`。宿主机无需开放 80/443 等端口，仅 Tunnel 出网。
+因此 Cloudflare 只需配置**一条** Public Hostname：域名 → `HTTP://127.0.0.1:19880`。Tunnel 使用 host 网络、Nginx 仅监听 127.0.0.1:19880，宿主机 80/443 可不占用。
 
 ---
 

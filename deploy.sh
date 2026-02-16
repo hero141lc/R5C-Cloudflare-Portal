@@ -86,6 +86,8 @@ services:
     image: $IMG_NGINX
     container_name: nginx
     restart: always
+    ports:
+      - "127.0.0.1:19880:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -108,9 +110,7 @@ services:
     image: $IMG_TUNNEL
     container_name: cf-tunnel
     restart: always
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
+    network_mode: host
     command: tunnel --no-autoupdate run --token $CF_TOKEN
 EOF
 
@@ -118,7 +118,7 @@ EOF
 if docker compose up -d; then
   echo -e "${GREEN}>>> 部署完成！${NC}"
   echo -e "${RED}请保存你的 UUID: $USER_UUID${NC}"
-  echo -e "现在请前往 Cloudflare 网页端配置：单域名指向 nginx（见 README）。"
+  echo -e "现在请前往 Cloudflare 网页端配置：Public Hostname 的 Service 填 HTTP://127.0.0.1:19880（见 README）。"
 else
   echo -e "${RED}>>> 容器启动失败（多为拉取镜像超时）。${NC}"
   echo -e "${RED}请保存你的 UUID: $USER_UUID${NC}"
