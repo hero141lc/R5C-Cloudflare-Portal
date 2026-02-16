@@ -108,6 +108,9 @@ services:
     image: $IMG_TUNNEL
     container_name: cf-tunnel
     restart: always
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     command: tunnel --no-autoupdate run --token $CF_TOKEN
 EOF
 

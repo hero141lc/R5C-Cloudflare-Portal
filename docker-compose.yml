@@ -26,9 +26,11 @@ services:
     volumes:
       - ./xray_config.json:/etc/xray/config.json
   tunnel:
-    # 使用 ghcr.io 避免 Docker Hub 超时（与 docker.io/cloudflare/cloudflared 同源）
     image: ghcr.io/cloudflare/cloudflared:latest
     container_name: cf-tunnel
     restart: always
-    # 请先运行 ./deploy.sh 生成带 Token 的配置，或 export CF_TOKEN=你的Token 后 docker compose up -d
+    # 容器内指定公网 DNS，避免 Docker 内置 DNS(127.0.0.11) 无法解析 argotunnel.com
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     command: tunnel --no-autoupdate run --token ${CF_TOKEN}
