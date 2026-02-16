@@ -35,6 +35,7 @@ chmod +x deploy.sh
 
 - **Cloudflare Tunnel Token**：在 [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → Networks → Tunnels 中创建隧道后复制
 - **Xray UUID**：直接回车可自动生成，请务必保存脚本输出的 UUID
+- **三个镜像**（可选）：Dashdot / Xray / Tunnel 的镜像名，直接回车则使用默认；可填第三方或镜像加速地址，例如 `registry.cn-hangzhou.aliyuncs.com/xxx/dashdot:latest`
 
 ### 3. Cloudflare 网页端配置
 
@@ -111,14 +112,47 @@ chmod +x deploy.sh
 
 ## 镜像拉取失败（超时 / 国内网络）
 
-若出现 `request canceled while waiting for connection` 或 `Client.Timeout exceeded`，多为访问 Docker Hub 超时。可：
+若出现 `request canceled`、`Client.Timeout exceeded` 或 `dial tcp ... i/o timeout`，多为 Docker 无法直连 Docker Hub。
 
-1. **配置 Docker 镜像加速**（按你当前系统配置，例如）：
-   - 编辑 `/etc/docker/daemon.json`，增加 `"registry-mirrors": ["https://镜像地址"]`，重启 Docker 后重试 `docker compose up -d`。
-2. **分步拉取**：先 `docker pull 镜像名` 拉完再 `docker compose up -d`。
-3. **确认本机可访问外网**：R5C 若走代理，需保证 Docker 拉取时能连上 registry（或使用镜像加速）。
+**重要**：你在终端里配置的代理（如 `export http_proxy=...`）只对当前 shell 生效，**Docker 守护进程不会使用**。拉取镜像的是 Docker daemon，需要单独为 Docker 配置代理。
 
-配置和 UUID 已写入当前目录，重试时无需再跑一遍 `deploy.sh`，直接在同一目录执行 `docker compose up -d` 即可。
+### 让 Docker 使用本机代理（FriendlyWrt / systemd）
+
+1. 创建目录并写入代理配置（把 `http://代理IP:端口` 换成你本机可用的代理，例如 `http://127.0.0.1:7890`）：
+   ```bash
+   mkdir -p /etc/systemd/system/docker.service.d
+   cat > /etc/systemd/system/docker.service.d/http-proxy.conf << 'PROXY'
+   [Service]
+   Environment="HTTP_PROXY=http://代理IP:端口"
+   Environment="HTTPS_PROXY=http://代理IP:端口"
+   Environment="NO_PROXY=localhost,127.0.0.1"
+   PROXY
+   ```
+2. 重载并重启 Docker：
+   ```bash
+   systemctl daemon-reload
+   systemctl restart docker
+   ```
+3. 在项目目录重试：
+   ```bash
+   cd /root/R5C-Cloudflare-Portal
+   docker compose up -d
+   ```
+
+若本机代理是 HTTP 且需认证，可写为：`http://用户名:密码@代理IP:端口`（注意特殊字符需 URL 编码）。
+
+### 镜像来源说明
+
+- **cloudflared**：已改为 `ghcr.io/cloudflare/cloudflared`，走 GitHub 镜像，一般无需 Docker Hub。
+- **xray**：`teddysun/xray` 在 Docker Hub，部分环境或镜像加速会缓存。
+- **dashdot**：仅 Docker Hub（`mauricenino/dashdot`），若超时需配置 Docker 代理或镜像加速后拉取。
+
+### 其他方式
+
+- **镜像加速**：编辑 `/etc/docker/daemon.json`，增加 `"registry-mirrors": ["https://镜像地址"]`，重启 Docker（适合无代理、用国内镜像站）。
+- **分步拉取**：先 `docker pull ghcr.io/cloudflare/cloudflared:latest`、`docker pull teddysun/xray:latest`，再配置代理后 `docker pull mauricenino/dashdot:latest`，最后 `docker compose up -d`。
+
+配置和 UUID 已写入当前目录，重试时无需再跑 `deploy.sh`，直接在同一目录执行 `docker compose up -d` 即可。
 
 ---
 

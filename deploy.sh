@@ -17,6 +17,14 @@ if [ -z "$USER_UUID" ]; then
     USER_UUID=$(cat /proc/sys/kernel/random/uuid)
 fi
 
+# 可选：第三方镜像（直接回车使用默认）
+read -p "Dashdot 镜像 (回车默认 mauricenino/dashdot:latest): " IMG_DASHDOT
+read -p "Xray 镜像 (回车默认 teddysun/xray:latest): " IMG_XRAY
+read -p "Tunnel 镜像 (回车默认 ghcr.io/cloudflare/cloudflared:latest): " IMG_TUNNEL
+IMG_DASHDOT=${IMG_DASHDOT:-mauricenino/dashdot:latest}
+IMG_XRAY=${IMG_XRAY:-teddysun/xray:latest}
+IMG_TUNNEL=${IMG_TUNNEL:-ghcr.io/cloudflare/cloudflared:latest}
+
 # 2. 创建 xray 配置文件（端口与路径选用非常用值，减少冲突与扫描）
 cat > xray_config.json <<EOF
 {
@@ -41,20 +49,20 @@ EOF
 cat > docker-compose.yml <<EOF
 services:
   dashdot:
-    image: mauricenino/dashdot:latest
+    image: $IMG_DASHDOT
     container_name: dashdot
     restart: always
     privileged: true
     volumes:
       - /:/mnt/host:ro
   xray:
-    image: teddysun/xray:latest
+    image: $IMG_XRAY
     container_name: xray
     restart: always
     volumes:
       - ./xray_config.json:/etc/xray/config.json
   tunnel:
-    image: cloudflare/cloudflared:latest
+    image: $IMG_TUNNEL
     container_name: cf-tunnel
     restart: always
     command: tunnel --no-autoupdate run --token $CF_TOKEN
@@ -66,9 +74,10 @@ if docker compose up -d; then
   echo -e "${RED}请保存你的 UUID: $USER_UUID${NC}"
   echo -e "现在请前往 Cloudflare 网页端配置域名映射。"
 else
-  echo -e "${RED}>>> 容器启动失败（多为拉取镜像超时，例如 Docker Hub 在国内较慢）。${NC}"
+  echo -e "${RED}>>> 容器启动失败（多为拉取镜像超时）。${NC}"
   echo -e "${RED}请保存你的 UUID: $USER_UUID${NC}"
-  echo -e "可配置 Docker 镜像加速后重试: docker compose up -d"
-  echo -e "或参考 README 中的「镜像拉取失败」说明。"
+  echo -e "若本机已配置代理：Docker 守护进程默认不会使用，需为 Docker 单独配置代理后再重试。"
+  echo -e "详见 README「镜像拉取失败」→「让 Docker 使用本机代理」。"
+  echo -e "配置好后在同一目录执行: docker compose up -d"
   exit 1
 fi
