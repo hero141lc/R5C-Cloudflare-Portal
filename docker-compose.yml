@@ -1,7 +1,6 @@
 # 由 deploy.sh 自动生成，请勿直接提交含 Token 的版本
 # 此文件为模板，实际部署请运行 ./deploy.sh
 # 所有路径均相对项目目录（运行 compose 时需在项目根目录）
-version: '3'
 services:
   dashdot:
     image: mauricenino/dashdot:latest

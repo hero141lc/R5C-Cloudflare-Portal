@@ -109,6 +109,19 @@ chmod +x deploy.sh
 
 ---
 
+## 镜像拉取失败（超时 / 国内网络）
+
+若出现 `request canceled while waiting for connection` 或 `Client.Timeout exceeded`，多为访问 Docker Hub 超时。可：
+
+1. **配置 Docker 镜像加速**（按你当前系统配置，例如）：
+   - 编辑 `/etc/docker/daemon.json`，增加 `"registry-mirrors": ["https://镜像地址"]`，重启 Docker 后重试 `docker compose up -d`。
+2. **分步拉取**：先 `docker pull 镜像名` 拉完再 `docker compose up -d`。
+3. **确认本机可访问外网**：R5C 若走代理，需保证 Docker 拉取时能连上 registry（或使用镜像加速）。
+
+配置和 UUID 已写入当前目录，重试时无需再跑一遍 `deploy.sh`，直接在同一目录执行 `docker compose up -d` 即可。
+
+---
+
 ## 安全提醒
 
 - **不要**将 `xray_config.json` 或内含 Token 的 `docker-compose.yml` 提交到公开仓库。
