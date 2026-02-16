@@ -9,7 +9,8 @@
 | 文件 | 说明 |
 |------|------|
 | `deploy.sh` | 一键安装脚本：交互输入 Token/UUID、生成配置并启动 Docker |
-| `docker-compose.yml` | 容器编排（dashdot + xray + cloudflared） |
+| `docker-compose.yml` | 容器编排（nginx + dashdot + xray + cloudflared） |
+| `nginx/default.conf` | Nginx 配置：`/` → dashdot，`/9k2m` → xray（可由 deploy.sh 生成） |
 | `xray_config.example.json` | Xray 配置示例，实际使用的 `xray_config.json` 由 `deploy.sh` 生成 |
 | `README.md` | 本说明文档 |
 
@@ -37,63 +38,55 @@ chmod +x deploy.sh
 - **Xray UUID**：直接回车可自动生成，请务必保存脚本输出的 UUID
 - **镜像仓库地址**（可选）：直接回车使用默认源；若填写一个仓库地址（如 `hub.docker.bluepio.com`），则三个镜像（dashdot / xray / cloudflared）均从该仓库拉取，便于使用同一镜像加速或自建仓库
 
-### 3. Cloudflare 网页端配置
+### 3. Cloudflare 网页端配置（单域名）
 
-部署完成后，需在 Cloudflare 里把域名指到容器服务。
+部署完成后，在 Cloudflare 里用**一个域名**指向 Nginx，由 Nginx 按路径分流：
+
+- **`xxx.com/`** → Dashdot 状态页  
+- **`xxx.com/9k2m`** → Xray 代理（WebSocket）
 
 1. 登录 [Cloudflare Zero Trust](https://one.dash.cloudflare.com/)。
-2. 进入 **Networks → Tunnels**，找到刚创建、且已在运行的隧道。
-3. 点击 **Edit**，打开 **Public Hostname** 标签页。
-
-**添加状态面板映射：**
+2. 进入 **Networks → Tunnels**，找到刚创建、且已在运行的隧道，点击 **Edit**。
+3. 打开 **Public Hostname**，添加**一条**映射即可：
 
 | 项 | 值 |
 |----|-----|
-| Subdomain | `status` |
-| Service | `HTTP://dashdot:3001` |
+| Subdomain | 留空或填 `@`（表示根域名） |
+| Domain | 选择你的域名（如 `yourdomain.com`） |
+| Service | `HTTP://nginx:80` |
 
-**添加代理隧道映射：**
+**TLS：** 在 **Additional application settings → TLS** 中，内网为 HTTP 时可开启 **No TLS Verify**（按需）。
 
-| 项 | 值 |
-|----|-----|
-| Subdomain | `proxy` |
-| Service | `HTTP://xray:38472` |
-
-**TLS：** 在映射的 **Additional application settings → TLS** 中，如内网为纯 HTTP/WS，可开启 **No TLS Verify**（按需选择）。
-
-保存后，即可通过 `status.你的域名` 访问状态页、`proxy.你的域名` 作为代理入口。
+保存后，访问 `https://你的域名/` 为状态页，同一域名路径 `/9k2m` 为代理入口。
 
 ---
 
-## Dashdot 与 Xray 如何共存
+## 单域名与 Nginx 分流
 
-两个服务在同一份 `docker-compose` 里、同一 Docker 网络中，互不抢端口：
+本方案用 **Nginx** 做反向代理，实现**一个域名、按路径区分**：
 
-- **Dashdot**：参考 [官方示例](https://github.com/mauricenino/dashdot)，容器内监听 **3001**，需要 `-v /:/mnt/host:ro` 和 `--privileged` 才能读宿主机信息做状态页。本方案不映射主机端口，由 Cloudflare Tunnel 通过服务名 `dashdot:3001` 访问。
-- **Xray**：容器内监听 **38472**，WebSocket 路径 `/9k2m`，仅通过 Tunnel 的 `proxy.你的域名` → `xray:38472` 暴露。
+- **Nginx**：对 Cloudflare Tunnel 暴露 80，收到请求后按路径转发。
+- **`/`** → 转发到 **dashdot:3001**（状态页）。
+- **`/9k2m`** → 转发到 **xray:38472**（VLESS WebSocket），并带上 WebSocket 升级头。
 
-因此：
-
-1. 宿主机无需开放 80/443/3001/38472 等端口，只跑 Tunnel 出网。
-2. 对外用不同子域名区分：`status.xxx` → 状态页，`proxy.xxx` → 代理。
-3. 所有路径在项目内用相对路径（`./xray_config.json` 等），部署时在项目目录执行 `./deploy.sh` 即可。
+因此 Cloudflare 只需配置**一条** Public Hostname：域名 → `HTTP://nginx:80`。宿主机无需开放 80/443 等端口，仅 Tunnel 出网。
 
 ---
 
 ## 朋友连接指南
 
-把下面信息发给使用代理的人（将 `yourdomain.com` 换成你的实际域名）：
+把下面信息发给使用代理的人（将 `yourdomain.com` 换成你的实际域名，与状态页同域名）：
 
 | 项目 | 值 |
 |------|-----|
-| **地址 (Address)** | `proxy.yourdomain.com` |
+| **地址 (Address)** | `yourdomain.com` |
 | **端口 (Port)** | `443` |
 | **传输协议 (Network)** | `ws` |
 | **路径 (Path)** | `/9k2m` |
 | **TLS** | 开启 |
 | **UUID** | 部署时脚本生成并输出的那个（或你自行填写的） |
 
-客户端协议选择 **VLESS**，按上表填写即可。
+客户端协议选择 **VLESS**，按上表填写即可。状态页与代理共用同一域名，仅路径不同（`/` 与 `/9k2m`）。
 
 ---
 

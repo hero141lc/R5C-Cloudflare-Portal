@@ -24,10 +24,12 @@ if [ -n "$MIRROR" ]; then
   IMG_DASHDOT="$MIRROR/mauricenino/dashdot:latest"
   IMG_XRAY="$MIRROR/teddysun/xray:latest"
   IMG_TUNNEL="$MIRROR/cloudflare/cloudflared:latest"
+  IMG_NGINX="$MIRROR/library/nginx:alpine"
 else
   IMG_DASHDOT="mauricenino/dashdot:latest"
   IMG_XRAY="teddysun/xray:latest"
   IMG_TUNNEL="ghcr.io/cloudflare/cloudflared:latest"
+  IMG_NGINX="nginx:alpine"
 fi
 
 # 2. 创建 xray 配置文件（端口与路径选用非常用值，减少冲突与扫描）
@@ -50,9 +52,45 @@ cat > xray_config.json <<EOF
 }
 EOF
 
-# 3. 创建 docker-compose.yml（不含 version，新版 compose 已弃用）
+# 3. 确保 nginx 配置存在（单域名：/ -> dashdot，/9k2m -> xray）
+mkdir -p nginx
+cat > nginx/default.conf <<'NGINX'
+# 单域名：/ -> dashdot 状态页，/9k2m -> xray WebSocket
+server {
+    listen 80;
+    server_name _;
+    location /9k2m {
+        proxy_pass http://xray:38472;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location / {
+        proxy_pass http://dashdot:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+NGINX
+
+# 4. 创建 docker-compose.yml（不含 version，新版 compose 已弃用）
 cat > docker-compose.yml <<EOF
 services:
+  nginx:
+    image: $IMG_NGINX
+    container_name: nginx
+    restart: always
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - dashdot
+      - xray
   dashdot:
     image: $IMG_DASHDOT
     container_name: dashdot
@@ -73,11 +111,11 @@ services:
     command: tunnel --no-autoupdate run --token $CF_TOKEN
 EOF
 
-# 4. 启动 Docker
+# 5. 启动 Docker
 if docker compose up -d; then
   echo -e "${GREEN}>>> 部署完成！${NC}"
   echo -e "${RED}请保存你的 UUID: $USER_UUID${NC}"
-  echo -e "现在请前往 Cloudflare 网页端配置域名映射。"
+  echo -e "现在请前往 Cloudflare 网页端配置：单域名指向 nginx（见 README）。"
 else
   echo -e "${RED}>>> 容器启动失败（多为拉取镜像超时）。${NC}"
   echo -e "${RED}请保存你的 UUID: $USER_UUID${NC}"

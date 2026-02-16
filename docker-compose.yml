@@ -1,7 +1,16 @@
 # 由 deploy.sh 自动生成，请勿直接提交含 Token 的版本
 # 此文件为模板，实际部署请运行 ./deploy.sh
-# 所有路径均相对项目目录（运行 compose 时需在项目根目录）
+# 单域名：Tunnel 只指 nginx，/ -> dashdot，/9k2m -> xray
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: always
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - dashdot
+      - xray
   dashdot:
     image: mauricenino/dashdot:latest
     container_name: dashdot
