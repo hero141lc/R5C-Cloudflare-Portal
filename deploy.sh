@@ -17,13 +17,18 @@ if [ -z "$USER_UUID" ]; then
     USER_UUID=$(cat /proc/sys/kernel/random/uuid)
 fi
 
-# 可选：第三方镜像（直接回车使用默认）
-read -p "Dashdot 镜像 (回车默认 mauricenino/dashdot:latest): " IMG_DASHDOT
-read -p "Xray 镜像 (回车默认 teddysun/xray:latest): " IMG_XRAY
-read -p "Tunnel 镜像 (回车默认 ghcr.io/cloudflare/cloudflared:latest): " IMG_TUNNEL
-IMG_DASHDOT=${IMG_DASHDOT:-mauricenino/dashdot:latest}
-IMG_XRAY=${IMG_XRAY:-teddysun/xray:latest}
-IMG_TUNNEL=${IMG_TUNNEL:-ghcr.io/cloudflare/cloudflared:latest}
+# 可选：镜像仓库地址（填写则三个镜像均从该仓库拉取，回车使用默认源）
+read -p "镜像仓库地址 (回车默认，填写如 hub.docker.bluepio.com 则全部从该源拉取): " MIRROR
+MIRROR="${MIRROR#https://}"; MIRROR="${MIRROR#http://}"; MIRROR="${MIRROR%/}"
+if [ -n "$MIRROR" ]; then
+  IMG_DASHDOT="$MIRROR/mauricenino/dashdot:latest"
+  IMG_XRAY="$MIRROR/teddysun/xray:latest"
+  IMG_TUNNEL="$MIRROR/cloudflare/cloudflared:latest"
+else
+  IMG_DASHDOT="mauricenino/dashdot:latest"
+  IMG_XRAY="teddysun/xray:latest"
+  IMG_TUNNEL="ghcr.io/cloudflare/cloudflared:latest"
+fi
 
 # 2. 创建 xray 配置文件（端口与路径选用非常用值，减少冲突与扫描）
 cat > xray_config.json <<EOF

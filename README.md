@@ -35,7 +35,7 @@ chmod +x deploy.sh
 
 - **Cloudflare Tunnel Token**：在 [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → Networks → Tunnels 中创建隧道后复制
 - **Xray UUID**：直接回车可自动生成，请务必保存脚本输出的 UUID
-- **三个镜像**（可选）：Dashdot / Xray / Tunnel 的镜像名，直接回车则使用默认；可填第三方或镜像加速地址，例如 `registry.cn-hangzhou.aliyuncs.com/xxx/dashdot:latest`
+- **镜像仓库地址**（可选）：直接回车使用默认源；若填写一个仓库地址（如 `hub.docker.bluepio.com`），则三个镜像（dashdot / xray / cloudflared）均从该仓库拉取，便于使用同一镜像加速或自建仓库
 
 ### 3. Cloudflare 网页端配置
 
