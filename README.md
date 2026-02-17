@@ -36,7 +36,8 @@ chmod +x deploy.sh
 
 - **Cloudflare Tunnel Token**：在 [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → Networks → Tunnels 中创建隧道后复制
 - **Xray UUID**：直接回车可自动生成，请务必保存脚本输出的 UUID
-- **镜像仓库地址**（可选）：直接回车使用默认源；若填写一个仓库地址（如 `hub.docker.bluepio.com`），则三个镜像（dashdot / xray / cloudflared）均从该仓库拉取，便于使用同一镜像加速或自建仓库
+- **域名**（可选）：填写后部署成功会生成 **VLESS 配置链接**，可导入 v2rayN / v2rayNG / Shadowrocket 等，并写入 `client_link.txt` 方便复制
+- **镜像仓库地址**（可选）：直接回车使用默认源；若填写一个仓库地址（如 `hub.docker.bluepio.com`），则三个镜像均从该仓库拉取
 
 ### 3. Cloudflare 网页端配置（单域名）
 
@@ -89,6 +90,12 @@ Tunnel 使用 **host 网络**（使用宿主机 DNS/网络，避免容器内 DNS
 | **UUID** | 部署时脚本生成并输出的那个（或你自行填写的） |
 
 客户端协议选择 **VLESS**，按上表填写即可。状态页与代理共用同一域名，仅路径不同（`/` 与 `/9k2m`）。
+
+**VLESS 一键链接**（部署时若填写了域名，会自动生成并保存到 `client_link.txt`）：
+```text
+vless://UUID@你的域名:443?type=ws&security=tls&path=%2F9k2m#R5C
+```
+将 `UUID` 和 `你的域名` 替换后，在客户端选择「从剪贴板/链接导入」即可。已部署用户可随时执行 `cat client_link.txt` 复制链接。
 
 ---
 

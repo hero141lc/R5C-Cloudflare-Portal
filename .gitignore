@@ -1,5 +1,6 @@
 # 部署时由 deploy.sh 生成，含敏感信息勿提交
 xray_config.json
+client_link.txt
 
 # 若手动修改 docker-compose 写入了 Token，可取消下一行注释以免误提交
 # docker-compose.yml

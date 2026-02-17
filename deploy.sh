@@ -17,8 +17,12 @@ if [ -z "$USER_UUID" ]; then
     USER_UUID=$(cat /proc/sys/kernel/random/uuid)
 fi
 
+# 可选：域名（用于生成 VLESS 配置链接，如 xxxxxxxx.xxxxx.com）
+read -p "域名 (用于生成客户端链接，如 xxxxxxxx.xxxxx.com，回车可跳过): " DOMAIN
+DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN%/}"; DOMAIN="${DOMAIN%%/*}"
+
 # 可选：镜像仓库地址（填写则三个镜像均从该仓库拉取，回车使用默认源）
-read -p "镜像仓库地址 (回车默认，填写如 hub.docker.bluepio.com 则全部从该源拉取): " MIRROR
+read -p "镜像仓库地址 (回车默认，填写如 hub.docker.xxxxx.com 则全部从该源拉取): " MIRROR
 MIRROR="${MIRROR#https://}"; MIRROR="${MIRROR#http://}"; MIRROR="${MIRROR%/}"
 if [ -n "$MIRROR" ]; then
   IMG_DASHDOT="$MIRROR/mauricenino/dashdot:latest"
@@ -116,9 +120,27 @@ EOF
 
 # 5. 启动 Docker
 if docker compose up -d; then
+  echo ""
   echo -e "${GREEN}>>> 部署完成！${NC}"
   echo -e "${RED}请保存你的 UUID: $USER_UUID${NC}"
-  echo -e "现在请前往 Cloudflare 网页端配置：Public Hostname 的 Service 填 HTTP://127.0.0.1:19880（见 README）。"
+  echo ""
+  # 生成 VLESS 链接并写入文件，方便复制
+  if [ -n "$DOMAIN" ]; then
+    VLESS_LINK="vless://${USER_UUID}@${DOMAIN}:443?type=ws&security=tls&path=%2F9k2m#R5C"
+    echo -e "${GREEN}>>> VLESS 配置链接（可导入 v2rayN / v2rayNG / Shadowrocket 等）：${NC}"
+    echo "$VLESS_LINK"
+    echo ""
+    echo "$VLESS_LINK" > client_link.txt
+    echo -e "已保存到 ${GREEN}client_link.txt${NC}，可随时 cat client_link.txt 复制。"
+  else
+    VLESS_TEMPLATE="vless://${USER_UUID}@你的域名:443?type=ws&security=tls&path=%2F9k2m#R5C"
+    echo -e "${GREEN}>>> VLESS 配置链接（将「你的域名」替换为实际域名后导入客户端）：${NC}"
+    echo "$VLESS_TEMPLATE"
+    echo "$VLESS_TEMPLATE" > client_link.txt
+    echo -e "已保存到 ${GREEN}client_link.txt${NC}"
+  fi
+  echo ""
+  echo "现在请前往 Cloudflare 网页端配置：Public Hostname 的 Service 填 HTTP://127.0.0.1:19880（见 README）。"
 else
   echo -e "${RED}>>> 容器启动失败（多为拉取镜像超时）。${NC}"
   echo -e "${RED}请保存你的 UUID: $USER_UUID${NC}"
